@@ -23,7 +23,7 @@ void VM::scanCb(const sensor_msgs::msg::LaserScan::SharedPtr scan)
   }
   cv::Mat grayl, grayr;
   cv::Mat ROIL = img(cv::Rect(ROI, ROI, LENGTH/2-ROI, LENGTH/2-ROI));
-  cv::Mat ROIR = img(cv::Rect(LENGTH/2-1, ROI, LENGTH/2-ROI-1, LENGTH/2-ROI));
+  cv::Mat ROIR = img(cv::Rect(LENGTH/2+1, ROI, LENGTH/2-ROI+1, LENGTH/2-ROI));
 	cv::cvtColor(ROIL, grayl, cv::COLOR_BGR2GRAY);
   cv::cvtColor(ROIR, grayr, cv::COLOR_BGR2GRAY);
   cv::Mat binl, binr;
@@ -39,14 +39,14 @@ void VM::scanCb(const sensor_msgs::msg::LaserScan::SharedPtr scan)
   cv::cvtColor(binr, dstr, cv::COLOR_GRAY2BGR);
 	// 각 객체 영역에 바운딩 박스 표시하기
   cv::circle(img, cv::Point(LENGTH/2, LENGTH/2), 2, cv::Scalar(0, 0, 0), 2);
-  ldmin = sqrt((LENGTH/2-ROI-statsl.at<int>(1, 0)-statsl.at<int>(1, 2))*(LENGTH/2-ROI-statsl.at<int>(1, 0)-statsl.at<int>(1, 2))+(LENGTH/2-ROI-statsl.at<int>(1, 1)-statsl.at<int>(1, 3))*(LENGTH/2-ROI-statsl.at<int>(1, 1)-statsl.at<int>(1, 3)));
-  rdmin = sqrt(statsr.at<int>(1, 0)*(statsr.at<int>(1, 0))+(LENGTH/2-ROI-statsr.at<int>(1, 1)-statsr.at<int>(1, 3))*(LENGTH/2-ROI-statsr.at<int>(1, 1)-statsr.at<int>(1, 3)));
+  ldmin = sqrt((LENGTH/2-ROI-statsl.at<int>(1, 0)-statsl.at<int>(1, 2))*(LENGTH/2-ROI-statsl.at<int>(1, 0)-statsl.at<int>(1, 2))+(LENGTH/2-ROI-statsl.at<int>(1, 1)-statsl.at<int>(1, 3))*(LENGTH/2-ROI-statsl.at<int>(1, 1)-statsl.at<int>(1, 3)))+0.000001;
+  rdmin = sqrt(statsr.at<int>(1, 0)*(statsr.at<int>(1, 0))+(LENGTH/2-ROI-statsr.at<int>(1, 1)-statsr.at<int>(1, 3))*(LENGTH/2-ROI-statsr.at<int>(1, 1)-statsr.at<int>(1, 3)))+0.000001;
 	for (int i = 1;i < cntl;i++) {
 		int* p = statsl.ptr<int>(i);
     if (p[4] < 20) continue; 
 		cv::rectangle(img, cv::Rect(p[0]+ROI, p[1]+ROI, p[2], p[3]), cv::Scalar(255, 0, 0)), 2; // x,y,가로,세로 크기
-    if(ldmin > sqrt((LENGTH/2-ROI-p[0]-p[2])*(LENGTH/2-ROI-p[0]-p[2])+(LENGTH/2-ROI-p[1]-p[3])*(LENGTH/2-ROI-p[1]-p[3]))){
-      ldmin = sqrt((LENGTH/2-ROI-p[0]-p[2])*(LENGTH/2-ROI-p[0]-p[2])+(LENGTH/2-ROI-p[1]-p[3])*(LENGTH/2-ROI-p[1]-p[3]));
+    if(ldmin > sqrt((LENGTH/2-ROI-p[0]-p[2])*(LENGTH/2-ROI-p[0]-p[2])+(LENGTH/2-ROI-p[1]-p[3])*(LENGTH/2-ROI-p[1]-p[3]))+0.000001){
+      ldmin = sqrt((LENGTH/2-ROI-p[0]-p[2])*(LENGTH/2-ROI-p[0]-p[2])+(LENGTH/2-ROI-p[1]-p[3])*(LENGTH/2-ROI-p[1]-p[3]))+0.000001;
       lx = p[0];
       ly = p[1];
       lw = p[2];
@@ -58,8 +58,8 @@ void VM::scanCb(const sensor_msgs::msg::LaserScan::SharedPtr scan)
 		int* p = statsr.ptr<int>(j);
     if (p[4] < 20) continue; 
 		cv::rectangle(img, cv::Rect(p[0]+LENGTH/2, p[1]+ROI, p[2], p[3]), cv::Scalar(255, 0, 255)), 2; // x,y,가로,세로 크기
-    if(rdmin > sqrt(p[0]*p[0]+(LENGTH/2-ROI-p[1]-p[3])*(LENGTH/2-ROI-p[1]-p[3]))){
-      rdmin = sqrt(p[0]*p[0]+(LENGTH/2-ROI-p[1]-p[3])*(LENGTH/2-ROI-p[1]-p[3]));
+    if(rdmin > sqrt(p[0]*p[0]+(LENGTH/2-ROI-p[1]-p[3])*(LENGTH/2-ROI-p[1]-p[3]))+0.000001){
+      rdmin = sqrt(p[0]*p[0]+(LENGTH/2-ROI-p[1]-p[3])*(LENGTH/2-ROI-p[1]-p[3]))+0.000001;
       rx = p[0];
       ry = p[1];
       rw = p[2];
@@ -103,14 +103,14 @@ void VM::scanCb(const sensor_msgs::msg::LaserScan::SharedPtr scan)
   printf("ldmin = %f, rdmin = %f\n", ldmin, rdmin);
   //printf("rx = %f, ry = %f\n", 400-ROI-lx-lw, rx);
   printf("cntl = %d, cntr = %d\n", cntl, cntr);
-  err = (RAD2DEG(ltheta)-RAD2DEG(rtheta))/2;
-  //if((400-ROI-lx-lw) == 0 && rx == 0) err = 0;
-  //if(180-RAD2DEG(ltheta)-RAD2DEG(rtheta)<15&&ldmin <= 50&&rdmin <= 50)err = 100;
+  
   if(ldmin <= 50&&rdmin <= 50&&RAD2DEG(ltheta)>80&&RAD2DEG(rtheta)>80)err = 100;
-  else if(ldmin <= 30&&rdmin > 30)err = 200;
-  else if(rdmin <= 30&&ldmin > 30)err = 300;
-  else if(ldmin <= 30&&rdmin <= 30&&RAD2DEG(ltheta)>RAD2DEG(rtheta))err = 400;
-  else if(ldmin <= 30&&rdmin <= 30&&RAD2DEG(ltheta)<RAD2DEG(rtheta))err = 500;
+  else if(ldmin <= 50&&RAD2DEG(rtheta)>80)err = 200;
+  else if(rdmin <= 50&&RAD2DEG(ltheta)>80)err = 300;
+  else if(ldmin <= 17&&rdmin > 17)err = 400;
+  else if(rdmin <= 17&&ldmin > 17)err = 500;
+  else err = (RAD2DEG(ltheta)-RAD2DEG(rtheta))/2;
+
   //err1=RAD2DEG(acos(200*cos(rtheta/2-ltheta/2)/200));
   printf("err = %d\n",err);
   writer1 << img;
